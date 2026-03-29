@@ -38,7 +38,7 @@ npx prisma migrate dev --name init
 npm run dev
 ```
 
-> Not: Prisma SQLite bağlantısı `SQLITE_DATABASE_URL` değişkenini kullanır (örn. `file:./dev.db`).
+> Not: Prisma bağlantısı PostgreSQL üstünden `DATABASE_URL` değişkeni ile yapılır.
 
 ## Akış
 1. `/` sayfasına ürün linki girilir.
