@@ -39,7 +39,7 @@ npm run dev
 ```
 
 > Not: Prisma bağlantısı PostgreSQL üstünden `DATABASE_URL` değişkeni ile yapılır.
-> Production'da `npm run start`, uygulama açılmadan önce otomatik `prisma db push` çalıştırır.
+> Production'da `npm run start`, uygulama açılmadan önce otomatik `prisma db push --skip-generate` çalıştırır.
 
 ## Akış
 1. `/` sayfasına ürün linki girilir.
@@ -55,6 +55,7 @@ npm run dev
 - Ürün parse edilemedi
 - Eş ürün bulunamadı
 - Sepet/kupon alanı hataları
+- Bot/captcha engeli durumunda merchant analizi atlanır ve kullanıcıya teknik not düşülür.
 - Bot/rate-limit gibi durumlar `rawNotes` içinde kullanıcıya şeffaf gösterilir.
 
 ## MVP vs Sonraki Faz

@@ -8,6 +8,7 @@ import { rankRecommendations } from "@/lib/modules/recommendation";
 import { normalizeProductUrl } from "@/lib/modules/url-intake";
 import { extractProductFromUrl } from "@/lib/modules/extraction";
 import { verifyCoupon } from "@/lib/modules/coupon-verification";
+import { BotBlockedError } from "@/lib/modules/errors";
 
 type CouponResultWithCandidate = Prisma.CouponTestResultGetPayload<{
   include: { couponCandidate: true };
@@ -96,7 +97,11 @@ export async function runAnalysis(inputUrl: string) {
         });
         comparisonSnapshots.push(snap);
       } catch (error) {
-        rawNotes.push(`${adapter.name}: ${(error as Error).message}`);
+        if (error instanceof BotBlockedError) {
+          rawNotes.push(`${adapter.name}: Bot/captcha engeli nedeniyle bu merchant atlandı`);
+        } else {
+          rawNotes.push(`${adapter.name}: ${(error as Error).message}`);
+        }
       }
     }
 

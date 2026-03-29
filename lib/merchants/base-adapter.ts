@@ -1,15 +1,32 @@
 import * as cheerio from "cheerio";
 import { MerchantAdapter } from "@/lib/merchants/types";
 import { CouponVerificationResult, MerchantName, NormalizedProduct } from "@/lib/types/domain";
+import { BotBlockedError, detectBotBlocking } from "@/lib/modules/errors";
 
 export abstract class BaseAdapter implements MerchantAdapter {
   abstract name: MerchantName;
   abstract canHandle(url: string): boolean;
 
   async fetchHtml(url: string): Promise<string> {
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 PricePilotBot/1.0" } });
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8"
+      }
+    });
+    if (res.status === 403 || res.status === 429) {
+      throw new BotBlockedError(`${this.name} bot engeli: HTTP ${res.status}`);
+    }
     if (!res.ok) throw new Error(`${this.name} sayfası çekilemedi: ${res.status}`);
-    return res.text();
+
+    const html = await res.text();
+    if (detectBotBlocking(html)) {
+      throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
+    }
+
+    return html;
   }
 
   async extractProduct(url: string): Promise<NormalizedProduct> {
