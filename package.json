@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "postinstall": "playwright install chromium || true",
     "build": "next build",
     "start": "NODE_OPTIONS='--no-warnings=ExperimentalWarning' prisma db push --skip-generate && next start",
     "lint": "next lint",

@@ -6,12 +6,29 @@ import { BotBlockedError, detectBotBlocking } from "@/lib/modules/errors";
 import { BrowserAgent } from "@/lib/modules/browser-agent";
 import { shouldUseBrowserAgent } from "@/lib/config/agent-config";
 
+function isMissingPlaywrightExecutableError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes("executable doesn't exist") || message.includes("playwright install");
+}
+
 export abstract class BaseAdapter implements MerchantAdapter {
   abstract name: MerchantName;
   abstract canHandle(url: string): boolean;
 
   private async fetchHtmlWithBrowser(url: string): Promise<string> {
-    const browser = await chromium.launch({ headless: true });
+    let browser;
+    try {
+      browser = await chromium.launch({ headless: true });
+    } catch (error) {
+      if (isMissingPlaywrightExecutableError(error)) {
+        throw new Error(
+          "Playwright browser binary bulunamadı. Deploy ortamında `npx playwright install chromium` çalıştırın."
+        );
+      }
+      throw error;
+    }
+
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -36,7 +53,15 @@ export abstract class BaseAdapter implements MerchantAdapter {
   async fetchHtml(url: string): Promise<string> {
     const host = new URL(url).hostname;
     if (shouldUseBrowserAgent(host)) {
-      const browserHtml = await this.fetchHtmlWithBrowser(url);
+      const browserHtml = await this.fetchHtmlWithBrowser(url).catch((error) => {
+        if (error instanceof Error && isMissingPlaywrightExecutableError(error)) return null;
+        throw error;
+      });
+      if (!browserHtml) {
+        throw new BotBlockedError(
+          `${this.name} browser agent açılamadı (Playwright browser eksik). Merchant atlandı.`
+        );
+      }
       if (detectBotBlocking(browserHtml)) {
         throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
       }
