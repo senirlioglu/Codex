@@ -2,6 +2,7 @@ import { BaseAdapter } from "@/lib/merchants/base-adapter";
 import { merchantSelectors } from "@/lib/config/merchant-selectors";
 import { CouponVerificationResult, NormalizedProduct } from "@/lib/types/domain";
 import { parseTryPriceFromText } from "@/lib/modules/price-parser";
+import { isMerchantHost } from "@/lib/modules/url-intake";
 
 export class HepsiburadaAdapter extends BaseAdapter {
   name = "hepsiburada" as const;
@@ -9,7 +10,7 @@ export class HepsiburadaAdapter extends BaseAdapter {
   canHandle(url: string): boolean {
     try {
       const host = new URL(url).hostname.toLowerCase();
-      return host === "hepsiburada.com" || host === "www.hepsiburada.com";
+      return isMerchantHost(host, "hepsiburada.com");
     } catch {
       return false;
     }

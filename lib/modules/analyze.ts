@@ -13,6 +13,16 @@ type CouponResultWithCandidate = Prisma.CouponTestResultGetPayload<{
   include: { couponCandidate: true };
 }>;
 
+type RankedComparisonRow = {
+  productSnapshotId: string;
+  merchant: string;
+  title: string;
+  basePrice: number;
+  finalPrice: number;
+  sellerName: string | null;
+  matchScore: number;
+};
+
 export async function runAnalysis(inputUrl: string) {
   const intake = normalizeProductUrl(inputUrl);
   if (!intake.supported) throw new Error("Domain desteklenmiyor.");
@@ -127,7 +137,7 @@ export async function runAnalysis(inputUrl: string) {
       }
     }
 
-    const comparison = comparisonSnapshots.map((s) => {
+    const comparison: RankedComparisonRow[] = comparisonSnapshots.map((s) => {
       const applied = couponResults
         .filter((r) => r.productSnapshotId === s.id && r.status === "applied" && r.afterPrice)
         .sort((a, b) => Number(a.afterPrice) - Number(b.afterPrice))[0];

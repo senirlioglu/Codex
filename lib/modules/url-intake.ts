@@ -8,7 +8,13 @@ export const urlInputSchema = z.object({
 
 export function isSupportedHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return supportedDomains.some((domain) => host === domain || host === `www.${domain}`);
+  return supportedDomains.some((domain) => isMerchantHost(host, domain));
+}
+
+export function isMerchantHost(hostname: string, merchantDomain: string): boolean {
+  const host = hostname.toLowerCase();
+  const domain = merchantDomain.toLowerCase();
+  return host === domain || host === `www.${domain}`;
 }
 
 export function normalizeProductUrl(raw: string) {
