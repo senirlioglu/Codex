@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-const supportedDomains = ["hepsiburada.com", "idefix.com"] as const;
+import { supportedMerchantDomains } from "@/lib/config/merchant-hosts";
 
 export const urlInputSchema = z.object({
   inputUrl: z.string().url("Geçerli bir URL giriniz.")
@@ -8,7 +7,7 @@ export const urlInputSchema = z.object({
 
 export function isSupportedHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return supportedDomains.some((domain) => isMerchantHost(host, domain));
+  return supportedMerchantDomains.some((domain) => isMerchantHost(host, domain));
 }
 
 export function isMerchantHost(hostname: string, merchantDomain: string): boolean {
