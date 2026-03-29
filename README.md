@@ -39,6 +39,7 @@ npm run dev
 ```
 
 > Not: Prisma bağlantısı PostgreSQL üstünden `DATABASE_URL` değişkeni ile yapılır.
+> Production'da `npm run start`, uygulama açılmadan önce otomatik `prisma db push` çalıştırır.
 
 ## Akış
 1. `/` sayfasına ürün linki girilir.
