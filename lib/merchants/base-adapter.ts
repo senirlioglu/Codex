@@ -12,6 +12,12 @@ function isMissingPlaywrightExecutableError(error: unknown): boolean {
   return message.includes("executable doesn't exist") || message.includes("playwright install");
 }
 
+function isMissingPlaywrightSystemDependencyError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes("error while loading shared libraries") || message.includes("libglib-2.0.so.0");
+}
+
 export abstract class BaseAdapter implements MerchantAdapter {
   abstract name: MerchantName;
   abstract canHandle(url: string): boolean;
@@ -24,6 +30,11 @@ export abstract class BaseAdapter implements MerchantAdapter {
       if (isMissingPlaywrightExecutableError(error)) {
         throw new Error(
           "Playwright browser binary bulunamadı. Deploy ortamında `npx playwright install chromium` çalıştırın."
+        );
+      }
+      if (isMissingPlaywrightSystemDependencyError(error)) {
+        throw new Error(
+          "Playwright browser bağımlılıkları eksik (örn: libglib). Deploy image içinde Playwright system deps kurulu olmalı."
         );
       }
       throw error;
@@ -54,7 +65,12 @@ export abstract class BaseAdapter implements MerchantAdapter {
     const host = new URL(url).hostname;
     if (shouldUseBrowserAgent(host)) {
       const browserHtml = await this.fetchHtmlWithBrowser(url).catch((error) => {
-        if (error instanceof Error && isMissingPlaywrightExecutableError(error)) return null;
+        if (
+          error instanceof Error &&
+          (isMissingPlaywrightExecutableError(error) || isMissingPlaywrightSystemDependencyError(error))
+        ) {
+          return null;
+        }
         throw error;
       });
       if (!browserHtml) {
