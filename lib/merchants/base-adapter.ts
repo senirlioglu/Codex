@@ -3,6 +3,8 @@ import { chromium } from "playwright";
 import { MerchantAdapter } from "@/lib/merchants/types";
 import { CouponVerificationResult, MerchantName, NormalizedProduct } from "@/lib/types/domain";
 import { BotBlockedError, detectBotBlocking } from "@/lib/modules/errors";
+import { BrowserAgent } from "@/lib/modules/browser-agent";
+import { shouldUseBrowserAgent } from "@/lib/config/agent-config";
 
 export abstract class BaseAdapter implements MerchantAdapter {
   abstract name: MerchantName;
@@ -16,13 +18,13 @@ export abstract class BaseAdapter implements MerchantAdapter {
       locale: "tr-TR"
     });
     const page = await context.newPage();
+    const agent = new BrowserAgent(page);
 
     try {
       await page.addInitScript(() => {
         Object.defineProperty(navigator, "webdriver", { get: () => undefined });
       });
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
-      await page.waitForTimeout(1200);
+      await agent.humanGoto(url);
       return await page.content();
     } finally {
       await page.close();
@@ -32,6 +34,15 @@ export abstract class BaseAdapter implements MerchantAdapter {
   }
 
   async fetchHtml(url: string): Promise<string> {
+    const host = new URL(url).hostname;
+    if (shouldUseBrowserAgent(host)) {
+      const browserHtml = await this.fetchHtmlWithBrowser(url);
+      if (detectBotBlocking(browserHtml)) {
+        throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
+      }
+      return browserHtml;
+    }
+
     const res = await fetch(url, {
       headers: {
         "User-Agent":
