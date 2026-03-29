@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AnalysisRequest {
+  id            String           @id @default(cuid())
+  inputUrl      String
+  sourceDomain  String
+  status        String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  products       ProductSnapshot[]
+  couponResults  CouponTestResult[]
+  recommendation Recommendation?
+}
+
+model ProductSnapshot {
+  id                String    @id @default(cuid())
+  analysisRequestId String
+  merchant          String
+  productUrl        String
+  title             String
+  brand             String?
+  model             String?
+  variant           String?
+  imageUrl          String?
+  sku               String?
+  mpn               String?
+  extractedPrice    Float
+  shippingPrice     Float?
+  currency          String
+  availability      String?
+  sellerName        String?
+  matchScore        Int
+  isSourceProduct   Boolean
+  createdAt         DateTime  @default(now())
+  analysisRequest   AnalysisRequest @relation(fields: [analysisRequestId], references: [id])
+  couponResults     CouponTestResult[]
+}
+
+model CouponCandidate {
+  id             String   @id @default(cuid())
+  merchant       String
+  code           String
+  source         String
+  minCartValue   Float?
+  notes          String?
+  firstOrderOnly Boolean  @default(false)
+  mobileOnly     Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  couponTests    CouponTestResult[]
+
+  @@unique([merchant, code], name: "merchant_code")
+}
+
+model CouponTestResult {
+  id                String   @id @default(cuid())
+  analysisRequestId String
+  productSnapshotId String
+  couponCandidateId String
+  status            String
+  beforePrice       Float?
+  afterPrice        Float?
+  message           String
+  screenshotPath    String?
+  testedAt          DateTime @default(now())
+
+  analysisRequest   AnalysisRequest @relation(fields: [analysisRequestId], references: [id])
+  productSnapshot   ProductSnapshot @relation(fields: [productSnapshotId], references: [id])
+  couponCandidate   CouponCandidate @relation(fields: [couponCandidateId], references: [id])
+}
+
+model Recommendation {
+  id                           String   @id @default(cuid())
+  analysisRequestId            String   @unique
+  bestOverallProductSnapshotId String
+  bestVerifiedCouponResultId   String?
+  summaryJson                  Json
+  createdAt                    DateTime @default(now())
+
+  analysisRequest AnalysisRequest @relation(fields: [analysisRequestId], references: [id])
+}
