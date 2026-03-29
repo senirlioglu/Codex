@@ -38,6 +38,8 @@ npx prisma migrate dev --name init
 npm run dev
 ```
 
+> Not: Prisma SQLite bağlantısı `SQLITE_DATABASE_URL` değişkenini kullanır (örn. `file:./dev.db`).
+
 ## Akış
 1. `/` sayfasına ürün linki girilir.
 2. `POST /api/analyze` analizi çalıştırır.
