@@ -155,6 +155,10 @@ export async function runAnalysis(inputUrl: string) {
     });
 
     const ranked = rankRecommendations(comparison);
+    const bestAppliedCouponResult = couponResults
+      .filter((result) => result.status === "applied" && result.afterPrice !== null)
+      .sort((a, b) => Number(a.afterPrice) - Number(b.afterPrice))[0];
+
     const formatted = formatResult({
       currency: source.currency,
       bestOverall: ranked.bestOverall,
@@ -174,7 +178,7 @@ export async function runAnalysis(inputUrl: string) {
       data: {
         analysisRequestId: analysis.id,
         bestOverallProductSnapshotId: ranked.bestOverall.productSnapshotId,
-        bestVerifiedCouponResultId: couponResults.find((r) => r.status === "applied")?.id,
+        bestVerifiedCouponResultId: bestAppliedCouponResult?.id,
         summaryJson: formatted as unknown as object
       }
     });

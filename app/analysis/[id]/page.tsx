@@ -1,17 +1,40 @@
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/status-badge";
+import { getAnalysisResult } from "@/lib/modules/analyze";
 
-async function getData(id: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/api/analyze/${id}`, {
-    cache: "no-store"
-  });
-  if (!res.ok) return null;
-  return res.json();
+type AnalysisResultPayload = {
+  bestOverall: { title: string; merchant: string; finalPrice: number };
+  currency: string;
+  explanation: string;
+  comparison: Array<{
+    productSnapshotId: string;
+    merchant: string;
+    title: string;
+    basePrice: number;
+    finalPrice: number;
+    sellerName?: string | null;
+    matchScore: number;
+  }>;
+  couponResults: Array<{
+    id: string;
+    code: string;
+    status: string;
+    message: string;
+    beforePrice?: number | null;
+    afterPrice?: number | null;
+  }>;
+  rawNotes: string[];
+};
+
+function isAnalysisResultPayload(value: unknown): value is AnalysisResultPayload {
+  if (!value || typeof value !== "object") return false;
+  const payload = value as Partial<AnalysisResultPayload>;
+  return Boolean(payload.bestOverall && payload.currency && payload.explanation);
 }
 
 export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getData(id);
+  const data = await getAnalysisResult(id);
   if (!data) return notFound();
 
   if (data.status !== "completed") {
@@ -29,7 +52,18 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  if (!isAnalysisResultPayload(data.result)) {
+    return (
+      <div className="card space-y-2">
+        <h2 className="text-2xl font-bold">Sonuç henüz hazır değil</h2>
+        <p className="text-sm text-slate-700">
+          Analiz tamamlandı olarak işaretlense de sonuç özeti bulunamadı. Lütfen analizi tekrar başlatın.
+        </p>
+      </div>
+    );
+  }
   const result = data.result;
+
   return (
     <div className="space-y-6">
       <section className="card border-brand-100 bg-brand-50">

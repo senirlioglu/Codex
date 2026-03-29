@@ -12,6 +12,10 @@ function parseLdJson(html: string) {
     try {
       const json = JSON.parse(raw);
       if (json["@type"] === "Product") return json;
+      if (Array.isArray(json?.["@graph"])) {
+        const graphProduct = json["@graph"].find((item) => item?.["@type"] === "Product");
+        if (graphProduct) return graphProduct;
+      }
       if (Array.isArray(json)) {
         const found = json.find((j) => j?.["@type"] === "Product");
         if (found) return found;
