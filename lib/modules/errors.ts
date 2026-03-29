@@ -7,7 +7,7 @@ export class BotBlockedError extends Error {
 
 export function detectBotBlocking(html: string): boolean {
   const lower = html.toLowerCase();
-  return ["captcha", "robot", "bot doğrulama", "are you human", "security check"].some((token) =>
+  return ["captcha", "robot", "bot doğrulama", "are you human", "security check", "cloudflare", "verify you are human"].some((token) =>
     lower.includes(token)
   );
 }

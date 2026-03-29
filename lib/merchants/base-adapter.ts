@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { chromium } from "playwright";
 import { MerchantAdapter } from "@/lib/merchants/types";
 import { CouponVerificationResult, MerchantName, NormalizedProduct } from "@/lib/types/domain";
 import { BotBlockedError, detectBotBlocking } from "@/lib/modules/errors";
@@ -6,6 +7,29 @@ import { BotBlockedError, detectBotBlocking } from "@/lib/modules/errors";
 export abstract class BaseAdapter implements MerchantAdapter {
   abstract name: MerchantName;
   abstract canHandle(url: string): boolean;
+
+  private async fetchHtmlWithBrowser(url: string): Promise<string> {
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      locale: "tr-TR"
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+      });
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+      await page.waitForTimeout(1200);
+      return await page.content();
+    } finally {
+      await page.close();
+      await context.close();
+      await browser.close();
+    }
+  }
 
   async fetchHtml(url: string): Promise<string> {
     const res = await fetch(url, {
@@ -17,13 +41,21 @@ export abstract class BaseAdapter implements MerchantAdapter {
       }
     });
     if (res.status === 403 || res.status === 429) {
-      throw new BotBlockedError(`${this.name} bot engeli: HTTP ${res.status}`);
+      const browserHtml = await this.fetchHtmlWithBrowser(url).catch(() => null);
+      if (!browserHtml || detectBotBlocking(browserHtml)) {
+        throw new BotBlockedError(`${this.name} bot engeli: HTTP ${res.status}`);
+      }
+      return browserHtml;
     }
     if (!res.ok) throw new Error(`${this.name} sayfası çekilemedi: ${res.status}`);
 
     const html = await res.text();
     if (detectBotBlocking(html)) {
-      throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
+      const browserHtml = await this.fetchHtmlWithBrowser(url).catch(() => null);
+      if (!browserHtml || detectBotBlocking(browserHtml)) {
+        throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
+      }
+      return browserHtml;
     }
 
     return html;

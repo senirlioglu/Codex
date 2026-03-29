@@ -56,6 +56,7 @@ npm run dev
 - Eş ürün bulunamadı
 - Sepet/kupon alanı hataları
 - Bot/captcha engeli durumunda merchant analizi atlanır ve kullanıcıya teknik not düşülür.
+- Bot/captcha sinyali alınırsa sistem otomatik olarak Playwright ile gerçek tarayıcı fallback'i dener.
 - Bot/rate-limit gibi durumlar `rawNotes` içinde kullanıcıya şeffaf gösterilir.
 
 ## MVP vs Sonraki Faz
