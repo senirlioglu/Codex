@@ -41,6 +41,8 @@ npm run dev
 > Not: Prisma bağlantısı PostgreSQL üstünden `DATABASE_URL` değişkeni ile yapılır.
 > Production'da `npm run start`, uygulama açılmadan önce otomatik `prisma db push --skip-generate` çalıştırır.
 > `FORCE_BROWSER_AGENT=true` yaparsan tüm merchant fetch işlemleri gerçek tarayıcı (Playwright agent) üzerinden yapılır.
+> `ALWAYS_USE_BROWSER_FOR=hepsiburada.com,idefix.com` ile sadece seçilen hostlarda önce browser-agent denersin.
+> Browser-agent açılamazsa (örn. eksik `libglib`) sistem otomatik HTTP akışına geri düşer; yalnızca bot/captcha devam ederse merchant atlanır.
 
 ## Akış
 1. `/` sayfasına ürün linki girilir.

@@ -1,5 +1,10 @@
+const alwaysUseBrowserForEnv = (process.env.ALWAYS_USE_BROWSER_FOR ?? "")
+  .split(",")
+  .map((v) => v.trim().toLowerCase())
+  .filter(Boolean);
+
 export const agentConfig = {
-  alwaysUseBrowserFor: ["hepsiburada.com"],
+  alwaysUseBrowserFor: alwaysUseBrowserForEnv,
   forceBrowserAgent: process.env.FORCE_BROWSER_AGENT === "true"
 };
 

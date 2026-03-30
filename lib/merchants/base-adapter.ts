@@ -81,17 +81,15 @@ export abstract class BaseAdapter implements MerchantAdapter {
         throw error;
       });
       if (!browserHtml) {
-        console.warn("[fetch-html-browser-unavailable]", { merchant: this.name, host, url });
-        throw new BotBlockedError(
-          `${this.name} browser agent açılamadı (Playwright browser eksik). Merchant atlandı.`
-        );
+        console.warn("[fetch-html-browser-unavailable-fallback-http]", { merchant: this.name, host, url });
+      } else {
+        if (detectBotBlocking(browserHtml)) {
+          console.warn("[fetch-html-bot-detected-browser]", { merchant: this.name, host, url });
+          throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
+        }
+        console.info("[fetch-html-success-browser]", { merchant: this.name, host, url });
+        return browserHtml;
       }
-      if (detectBotBlocking(browserHtml)) {
-        console.warn("[fetch-html-bot-detected-browser]", { merchant: this.name, host, url });
-        throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
-      }
-      console.info("[fetch-html-success-browser]", { merchant: this.name, host, url });
-      return browserHtml;
     }
 
     const res = await fetch(url, {
