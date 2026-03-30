@@ -25,6 +25,7 @@ type RankedComparisonRow = {
 };
 
 export async function runAnalysis(inputUrl: string) {
+  console.info("[analysis-start]", { inputUrl });
   const intake = normalizeProductUrl(inputUrl);
   if (!intake.supported) throw new Error("Domain desteklenmiyor.");
 
@@ -40,6 +41,7 @@ export async function runAnalysis(inputUrl: string) {
   });
 
   try {
+    console.info("[analysis-source-extraction-start]", { analysisId: analysis.id, url: intake.normalizedUrl });
     const source = await extractProductFromUrl(intake.normalizedUrl, sourceAdapter);
     const sourceSnap = await prisma.productSnapshot.create({
       data: {
@@ -68,9 +70,11 @@ export async function runAnalysis(inputUrl: string) {
 
     for (const adapter of adapters.filter((a) => a.name !== sourceAdapter.name)) {
       try {
+        console.info("[analysis-merchant-search-start]", { analysisId: analysis.id, merchant: adapter.name });
         const matched = await adapter.searchEquivalentProduct(source);
         if (!matched) {
           rawNotes.push(`${adapter.name}: Aynı ürün bulunamadı`);
+          console.info("[analysis-merchant-search-not-found]", { analysisId: analysis.id, merchant: adapter.name });
           continue;
         }
         const score = computeMatchScore(source, matched);
@@ -96,11 +100,22 @@ export async function runAnalysis(inputUrl: string) {
           }
         });
         comparisonSnapshots.push(snap);
+        console.info("[analysis-merchant-search-success]", { analysisId: analysis.id, merchant: adapter.name, productUrl: matched.productUrl });
       } catch (error) {
         if (error instanceof BotBlockedError) {
           rawNotes.push(`${adapter.name}: Bot/captcha engeli nedeniyle bu merchant atlandı`);
+          console.warn("[analysis-merchant-search-bot-blocked]", {
+            analysisId: analysis.id,
+            merchant: adapter.name,
+            error: error.message
+          });
         } else {
           rawNotes.push(`${adapter.name}: ${(error as Error).message}`);
+          console.error("[analysis-merchant-search-failed]", {
+            analysisId: analysis.id,
+            merchant: adapter.name,
+            error: error instanceof Error ? error.message : String(error)
+          });
         }
       }
     }
@@ -109,6 +124,11 @@ export async function runAnalysis(inputUrl: string) {
     for (const snap of comparisonSnapshots) {
       const candidates = couponCandidatesByMerchant[snap.merchant] ?? [];
       for (const c of candidates) {
+        console.info("[analysis-coupon-verify-start]", {
+          analysisId: analysis.id,
+          merchant: snap.merchant,
+          couponCode: c.code
+        });
         const coupon = await prisma.couponCandidate.upsert({
           where: { merchant_code: { merchant: snap.merchant, code: c.code } },
           update: { source: c.source, notes: c.notes ?? null, active: true },
@@ -125,6 +145,12 @@ export async function runAnalysis(inputUrl: string) {
         if (!adapter) continue;
 
         const result = await verifyCoupon(adapter, snap.productUrl, c.code, analysis.id);
+        console.info("[analysis-coupon-verify-finished]", {
+          analysisId: analysis.id,
+          merchant: snap.merchant,
+          couponCode: c.code,
+          status: result.status
+        });
         const saved = await prisma.couponTestResult.create({
           data: {
             analysisRequestId: analysis.id,
@@ -189,9 +215,15 @@ export async function runAnalysis(inputUrl: string) {
     });
 
     await prisma.analysisRequest.update({ where: { id: analysis.id }, data: { status: "completed" } });
+    console.info("[analysis-completed]", { analysisId: analysis.id });
     return analysis.id;
   } catch (error) {
     await prisma.analysisRequest.update({ where: { id: analysis.id }, data: { status: "failed" } });
+    console.error("[analysis-failed]", {
+      analysisId: analysis.id,
+      inputUrl: intake.normalizedUrl,
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }

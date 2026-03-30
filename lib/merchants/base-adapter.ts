@@ -27,6 +27,11 @@ export abstract class BaseAdapter implements MerchantAdapter {
     try {
       browser = await chromium.launch({ headless: true });
     } catch (error) {
+      console.error("[browser-launch-failed]", {
+        merchant: this.name,
+        url,
+        error: error instanceof Error ? error.message : String(error)
+      });
       if (isMissingPlaywrightExecutableError(error)) {
         throw new Error(
           "Playwright browser binary bulunamadı. Deploy ortamında `npx playwright install chromium` çalıştırın."
@@ -63,6 +68,8 @@ export abstract class BaseAdapter implements MerchantAdapter {
 
   async fetchHtml(url: string): Promise<string> {
     const host = new URL(url).hostname;
+    console.info("[fetch-html-start]", { merchant: this.name, host, url });
+
     if (shouldUseBrowserAgent(host)) {
       const browserHtml = await this.fetchHtmlWithBrowser(url).catch((error) => {
         if (
@@ -74,13 +81,16 @@ export abstract class BaseAdapter implements MerchantAdapter {
         throw error;
       });
       if (!browserHtml) {
+        console.warn("[fetch-html-browser-unavailable]", { merchant: this.name, host, url });
         throw new BotBlockedError(
           `${this.name} browser agent açılamadı (Playwright browser eksik). Merchant atlandı.`
         );
       }
       if (detectBotBlocking(browserHtml)) {
+        console.warn("[fetch-html-bot-detected-browser]", { merchant: this.name, host, url });
         throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
       }
+      console.info("[fetch-html-success-browser]", { merchant: this.name, host, url });
       return browserHtml;
     }
 
@@ -93,23 +103,30 @@ export abstract class BaseAdapter implements MerchantAdapter {
       }
     });
     if (res.status === 403 || res.status === 429) {
+      console.warn("[fetch-html-http-blocked]", { merchant: this.name, host, url, status: res.status });
       const browserHtml = await this.fetchHtmlWithBrowser(url).catch(() => null);
       if (!browserHtml || detectBotBlocking(browserHtml)) {
+        console.warn("[fetch-html-browser-fallback-failed]", { merchant: this.name, host, url, status: res.status });
         throw new BotBlockedError(`${this.name} bot engeli: HTTP ${res.status}`);
       }
+      console.info("[fetch-html-success-browser-fallback]", { merchant: this.name, host, url });
       return browserHtml;
     }
     if (!res.ok) throw new Error(`${this.name} sayfası çekilemedi: ${res.status}`);
 
     const html = await res.text();
     if (detectBotBlocking(html)) {
+      console.warn("[fetch-html-bot-detected-http]", { merchant: this.name, host, url });
       const browserHtml = await this.fetchHtmlWithBrowser(url).catch(() => null);
       if (!browserHtml || detectBotBlocking(browserHtml)) {
+        console.warn("[fetch-html-browser-fallback-failed-after-detect]", { merchant: this.name, host, url });
         throw new BotBlockedError(`${this.name} captcha/bot koruması tespit edildi`);
       }
+      console.info("[fetch-html-success-browser-fallback-after-detect]", { merchant: this.name, host, url });
       return browserHtml;
     }
 
+    console.info("[fetch-html-success-http]", { merchant: this.name, host, url });
     return html;
   }
 
